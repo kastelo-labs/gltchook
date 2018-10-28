@@ -16,9 +16,8 @@ import (
 
 type gitlabPushEvent struct {
 	Repository struct {
-		Name       string `json:"name"`
-		GitHTTPURL string `json:"git_http_url"`
-		GitSSHURL  string `json:"git_ssh_url"`
+		Slug       string `json:"slug"`         // bitbucket
+		GitHTTPURL string `json:"git_http_url"` // gitlab
 	} `json:"repository"`
 }
 
@@ -54,14 +53,17 @@ func handlePushEvent(w http.ResponseWriter, req *http.Request) {
 }
 
 func tcHook(ev gitlabPushEvent) {
-	repourl, err := url.Parse(ev.Repository.GitHTTPURL)
-	if err != nil {
-		log.Println("Un-parseable Git HTTP URL:", ev.Repository.GitHTTPURL)
-		return
-	}
+	repo := ev.Repository.Slug
+	if ev.Repository.GitHTTPURL != "" {
+		repourl, err := url.Parse(ev.Repository.GitHTTPURL)
+		if err != nil {
+			log.Println("Un-parseable Git HTTP URL:", ev.Repository.GitHTTPURL)
+			return
+		}
 
-	repo := repourl.Path
-	repo = strings.TrimSuffix(repo, path.Ext(repo))
+		repo = repourl.Path
+		repo = strings.TrimSuffix(repo, path.Ext(repo))
+	}
 
 	locator := fmt.Sprintf("vcsRoot:(type:jetbrains.git,property:(name:url,value:%s,matchType:contains,ignoreCase:true),count:99999),count:99999", repo)
 	values := url.Values{"locator": []string{locator}}
